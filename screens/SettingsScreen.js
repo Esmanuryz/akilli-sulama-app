@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import {
     View, Text, ScrollView, TouchableOpacity,
-    TextInput, StyleSheet, Alert
+    TextInput, StyleSheet, Alert, Modal
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import MapView, { Marker } from 'react-native-maps';
+
 
 export default function SettingsScreen() {
     const { theme } = useTheme();
@@ -18,6 +20,8 @@ export default function SettingsScreen() {
     const [saved, setSaved] = useState(false);
     const [locationName, setLocationName] = useState('');
     const [locationLoading, setLocationLoading] = useState(false);
+    const [showMap, setShowMap] = useState(false);
+    const [tempCoords, setTempCoords] = useState(null);
 
     useEffect(() => { loadSettings(); }, []);
 
@@ -87,6 +91,13 @@ export default function SettingsScreen() {
             setTimeout(() => setSaved(false), 2000);
             Alert.alert(t.saveSuccess, t.saveSuccessDesc);
         } catch (e) { Alert.alert(t.errorTitle, t.saveError); }
+    }
+    function confirmMapLocation() {
+        if (tempCoords) {
+            setLat(tempCoords.lat.toFixed(4));
+            setLon(tempCoords.lon.toFixed(4));
+        }
+        setShowMap(false);
     }
 
     const s = makeStyles(theme);
@@ -184,7 +195,70 @@ export default function SettingsScreen() {
                     );
                 })}
             </View>
+            {/* Haritadan Seç Butonu */}
+            <TouchableOpacity style={s.mapBtn} onPress={() => { setTempCoords(null); setShowMap(true); }}>
+                <Text style={{ fontSize: 18 }}>🗺️</Text>
+                <Text style={s.mapBtnText}>
+                    {lang === 'tr' ? 'Haritadan Konum Seç' : 'Select Location on Map'}
+                </Text>
+            </TouchableOpacity>
 
+            {/* Harita Modal */}
+            <Modal visible={showMap} animationType="slide" onRequestClose={() => setShowMap(false)}>
+                <View style={{ flex: 1 }}>
+                    <View style={s.modalHeader}>
+                        <Text style={s.modalTitle}>
+                            {lang === 'tr' ? '🗺️ Haritaya tıkla, konum seç' : '🗺️ Tap on map to select location'}
+                        </Text>
+                        <TouchableOpacity onPress={() => setShowMap(false)}>
+                            <Text style={s.modalClose}>✕</Text>
+                        </TouchableOpacity>
+                    </View>
+
+                    {tempCoords && (
+                        <View style={s.tempCoordsBar}>
+                            <Text style={s.tempCoordsText}>
+                                📍 {tempCoords.lat.toFixed(4)}, {tempCoords.lon.toFixed(4)}
+                            </Text>
+                        </View>
+                    )}
+
+                    <MapView
+                        style={{ flex: 1 }}
+                        initialRegion={{
+                            latitude: parseFloat(lat) || 39.9167,
+                            longitude: parseFloat(lon) || 32.8333,
+                            latitudeDelta: 5,
+                            longitudeDelta: 5,
+                        }}
+                        onPress={(e) => {
+                            setTempCoords({
+                                lat: e.nativeEvent.coordinate.latitude,
+                                lon: e.nativeEvent.coordinate.longitude,
+                            });
+                        }}
+                    >
+                        {tempCoords && (
+                            <Marker coordinate={{ latitude: tempCoords.lat, longitude: tempCoords.lon }} />
+                        )}
+                    </MapView>
+
+                    <View style={s.modalButtons}>
+                        <TouchableOpacity style={s.modalCancelBtn} onPress={() => setShowMap(false)}>
+                            <Text style={s.modalCancelText}>{lang === 'tr' ? 'İptal' : 'Cancel'}</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={[s.modalConfirmBtn, !tempCoords && { opacity: 0.5 }]}
+                            onPress={confirmMapLocation}
+                            disabled={!tempCoords}
+                        >
+                            <Text style={s.modalConfirmText}>
+                                {lang === 'tr' ? 'Bu Konumu Kullan' : 'Use This Location'}
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
             {/* Mod Seçimi */}
             <Text style={s.sectionLabel}>{t.modeSelect}</Text>
             <View style={s.card}>
@@ -272,5 +346,17 @@ function makeStyles(theme) {
         btnText: { color: '#fff', fontWeight: '500', fontSize: 16 },
         infoBox: { backgroundColor: theme.greenLight, borderRadius: 12, padding: 14 },
         infoText: { fontSize: 12, color: theme.greenText, lineHeight: 18 },
+        mapBtn: { backgroundColor: theme.card, borderRadius: 14, padding: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 12, borderWidth: 1.5, borderColor: '#4caf50' },
+        mapBtnText: { fontSize: 14, fontWeight: '500', color: '#4caf50' },
+        modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, backgroundColor: '#1a5c35' },
+        modalTitle: { fontSize: 14, fontWeight: '500', color: '#fff', flex: 1 },
+        modalClose: { fontSize: 22, color: '#fff', paddingHorizontal: 8 },
+        tempCoordsBar: { backgroundColor: '#e8f5e9', padding: 10, alignItems: 'center' },
+        tempCoordsText: { fontSize: 13, fontWeight: '500', color: '#1a5c35' },
+        modalButtons: { flexDirection: 'row', gap: 12, padding: 16, borderTopWidth: 0.5, borderColor: '#ddd', backgroundColor: '#fff' },
+        modalCancelBtn: { flex: 1, borderRadius: 12, padding: 14, alignItems: 'center', borderWidth: 1, borderColor: '#ddd' },
+        modalCancelText: { fontSize: 14, color: '#666' },
+        modalConfirmBtn: { flex: 1, borderRadius: 12, padding: 14, alignItems: 'center', backgroundColor: '#1a5c35' },
+        modalConfirmText: { fontSize: 14, color: '#fff', fontWeight: '500' },
     });
 }

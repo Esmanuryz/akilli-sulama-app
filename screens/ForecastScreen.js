@@ -8,7 +8,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useFocusEffect } from '@react-navigation/native';
 
-const API = 'http://localhost:8001';
+const API = 'http://192.168.181.241:8001';
 
 export default function ForecastScreen() {
     const { theme } = useTheme();
@@ -62,7 +62,11 @@ export default function ForecastScreen() {
     }
 
     const s = makeStyles(theme);
-    const days = forecast?.days ?? [];
+    const days = (forecast?.forecasts ?? forecast?.days ?? []).map(d => ({
+        day: d.day,
+        wr: d.wr_predicted ?? d.wr ?? 0,
+        stress_risk: d.stress_risk,
+    }));
     const maxWr = Math.max(...days.map(d => d.wr ?? 0), threshold, 1);
 
     return (

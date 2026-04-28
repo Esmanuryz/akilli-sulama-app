@@ -9,7 +9,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useFocusEffect } from '@react-navigation/native';
 
-const API = 'http://localhost:8001';
+const API = 'http://192.168.181.241:8001';
 
 export default function HomeScreen() {
     const { theme } = useTheme();
@@ -79,7 +79,7 @@ export default function HomeScreen() {
     async function checkApi() {
         setApiStatus('checking');
         try {
-            const res = await fetch(`${API}/health`, { signal: AbortSignal.timeout(3000) });
+            const res = await fetch(`${API}/health`);
             const data = await res.json();
             setApiStatus(data.status === 'ok' ? 'online' : 'offline');
         } catch (e) {
