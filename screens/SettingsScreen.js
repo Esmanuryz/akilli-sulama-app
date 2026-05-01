@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
 import {
     View, Text, ScrollView, TouchableOpacity,
-    TextInput, StyleSheet, Alert, Modal
+    TextInput, StyleSheet, Alert, Modal, ActivityIndicator
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import MapView, { Marker } from 'react-native-maps';
 
+const API = 'https://web-production-2b8d.up.railway.app';
 
 export default function SettingsScreen() {
     const { theme } = useTheme();
@@ -20,6 +21,7 @@ export default function SettingsScreen() {
     const [saved, setSaved] = useState(false);
     const [locationName, setLocationName] = useState('');
     const [locationLoading, setLocationLoading] = useState(false);
+    const [sensorFetching, setSensorFetching] = useState(false);
     const [showMap, setShowMap] = useState(false);
     const [tempCoords, setTempCoords] = useState(null);
 
@@ -50,7 +52,7 @@ export default function SettingsScreen() {
             const Location = await import('expo-location');
             const { status } = await Location.requestForegroundPermissionsAsync();
             if (status !== 'granted') {
-                Alert.alert(t.errorTitle, lang === 'tr' ? 'Konum izni verilmedi!' : 'Location permission denied!');
+                Alert.alert(t.warningTitle, lang === 'tr' ? 'Konum izni verilmedi!' : 'Location permission denied!');
                 return;
             }
             const location = await Location.getCurrentPositionAsync({});
@@ -59,6 +61,33 @@ export default function SettingsScreen() {
         } catch (e) {
             Alert.alert(t.errorTitle, lang === 'tr' ? 'Konum alınamadı!' : 'Could not get location!');
         }
+    }
+
+    async function fetchFromSensor() {
+        setSensorFetching(true);
+        try {
+            const res = await fetch(`${API}/sensor-data/latest`);
+            if (!res.ok) throw new Error('veri yok');
+            const data = await res.json();
+            setWr(String(data.wr.toFixed(1)));
+            const ts = new Date(data.timestamp).toLocaleTimeString(lang === 'tr' ? 'tr-TR' : 'en-US');
+
+            const successTitle = lang === 'tr' ? 'Sensör Verisi Alındı' : 'Sensor Data Received';
+            const successMsg = lang === 'tr'
+                ? `Wr: ${data.wr.toFixed(1)} mm\nSıcaklık: ${data.temperature ?? '-'}°C\nSon okuma: ${ts}`
+                : `Wr: ${data.wr.toFixed(1)} mm\nTemp: ${data.temperature ?? '-'}°C\nLast read: ${ts}`;
+
+            Alert.alert(successTitle, successMsg);
+        } catch (_) {
+            // Görseldeki hatayı dile duyarlı hale getirdik
+            Alert.alert(
+                t.errorTitle,
+                lang === 'tr'
+                    ? 'Sensörden veri alınamadı. ESP32 bağlı ve çalışıyor mu?'
+                    : 'Could not fetch sensor data. Is ESP32 connected and running?'
+            );
+        }
+        setSensorFetching(false);
     }
 
     async function loadSettings() {
@@ -92,6 +121,7 @@ export default function SettingsScreen() {
             Alert.alert(t.saveSuccess, t.saveSuccessDesc);
         } catch (e) { Alert.alert(t.errorTitle, t.saveError); }
     }
+
     function confirmMapLocation() {
         if (tempCoords) {
             setLat(tempCoords.lat.toFixed(4));
@@ -105,7 +135,6 @@ export default function SettingsScreen() {
     return (
         <ScrollView style={s.container} contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
 
-            {/* Koordinat Girişi */}
             <Text style={s.sectionLabel}>{t.manualCoords}</Text>
             <View style={s.card}>
                 <Text style={s.inputLabel}>{t.lat}</Text>
@@ -128,7 +157,6 @@ export default function SettingsScreen() {
                     placeholderTextColor={theme.textLight}
                 />
 
-                {/* Konum Göstergesi */}
                 {locationLoading && (
                     <View style={s.locationBox}>
                         <Text style={s.locationIcon}>🔍</Text>
@@ -146,17 +174,8 @@ export default function SettingsScreen() {
                         </View>
                     </View>
                 )}
-                {!locationLoading && locationName === '' && lat && lon && (
-                    <View style={[s.locationBox, { backgroundColor: '#fff3e0' }]}>
-                        <Text style={s.locationIcon}>⚠️</Text>
-                        <Text style={[s.locationLoading, { color: '#e65100' }]}>
-                            {lang === 'tr' ? 'Konum bulunamadı' : 'Location not found'}
-                        </Text>
-                    </View>
-                )}
             </View>
 
-            {/* GPS Butonu */}
             <TouchableOpacity style={s.gpsBtn} onPress={getGpsLocation}>
                 <Text style={{ fontSize: 18 }}>📡</Text>
                 <Text style={s.gpsBtnText}>
@@ -164,7 +183,6 @@ export default function SettingsScreen() {
                 </Text>
             </TouchableOpacity>
 
-            {/* Hızlı Şehir Seçimi */}
             <Text style={s.sectionLabel}>
                 {lang === 'tr' ? '📍 Hızlı Şehir Seçimi' : '📍 Quick City Select'}
             </Text>
@@ -178,8 +196,6 @@ export default function SettingsScreen() {
                     { name: 'Bursa', lat: 40.1826, lon: 29.0665 },
                     { name: 'Antalya', lat: 36.8969, lon: 30.7133 },
                     { name: 'Samsun', lat: 41.2867, lon: 36.33 },
-                    { name: 'Gaziantep', lat: 37.0662, lon: 37.3833 },
-                    { name: 'Kayseri', lat: 38.7312, lon: 35.4787 },
                 ].map((city, i) => {
                     const isSelected = parseFloat(lat) === city.lat && parseFloat(lon) === city.lon;
                     return (
@@ -195,34 +211,22 @@ export default function SettingsScreen() {
                     );
                 })}
             </View>
-            {/* Haritadan Seç Butonu */}
+
             <TouchableOpacity style={s.mapBtn} onPress={() => { setTempCoords(null); setShowMap(true); }}>
                 <Text style={{ fontSize: 18 }}>🗺️</Text>
                 <Text style={s.mapBtnText}>
-                    {lang === 'tr' ? 'Haritadan Konum Seç' : 'Select Location on Map'}
+                    {t.selectOnMap}
                 </Text>
             </TouchableOpacity>
 
-            {/* Harita Modal */}
             <Modal visible={showMap} animationType="slide" onRequestClose={() => setShowMap(false)}>
                 <View style={{ flex: 1 }}>
                     <View style={s.modalHeader}>
-                        <Text style={s.modalTitle}>
-                            {lang === 'tr' ? '🗺️ Haritaya tıkla, konum seç' : '🗺️ Tap on map to select location'}
-                        </Text>
+                        <Text style={s.modalTitle}>{t.mapInstruction}</Text>
                         <TouchableOpacity onPress={() => setShowMap(false)}>
                             <Text style={s.modalClose}>✕</Text>
                         </TouchableOpacity>
                     </View>
-
-                    {tempCoords && (
-                        <View style={s.tempCoordsBar}>
-                            <Text style={s.tempCoordsText}>
-                                📍 {tempCoords.lat.toFixed(4)}, {tempCoords.lon.toFixed(4)}
-                            </Text>
-                        </View>
-                    )}
-
                     <MapView
                         style={{ flex: 1 }}
                         initialRegion={{
@@ -231,35 +235,25 @@ export default function SettingsScreen() {
                             latitudeDelta: 5,
                             longitudeDelta: 5,
                         }}
-                        onPress={(e) => {
-                            setTempCoords({
-                                lat: e.nativeEvent.coordinate.latitude,
-                                lon: e.nativeEvent.coordinate.longitude,
-                            });
-                        }}
+                        onPress={(e) => setTempCoords({ lat: e.nativeEvent.coordinate.latitude, lon: e.nativeEvent.coordinate.longitude })}
                     >
-                        {tempCoords && (
-                            <Marker coordinate={{ latitude: tempCoords.lat, longitude: tempCoords.lon }} />
-                        )}
+                        {tempCoords && <Marker coordinate={{ latitude: tempCoords.lat, longitude: tempCoords.lon }} />}
                     </MapView>
-
                     <View style={s.modalButtons}>
                         <TouchableOpacity style={s.modalCancelBtn} onPress={() => setShowMap(false)}>
-                            <Text style={s.modalCancelText}>{lang === 'tr' ? 'İptal' : 'Cancel'}</Text>
+                            <Text style={s.modalCancelText}>{t.mapCancel}</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                             style={[s.modalConfirmBtn, !tempCoords && { opacity: 0.5 }]}
                             onPress={confirmMapLocation}
                             disabled={!tempCoords}
                         >
-                            <Text style={s.modalConfirmText}>
-                                {lang === 'tr' ? 'Bu Konumu Kullan' : 'Use This Location'}
-                            </Text>
+                            <Text style={s.modalConfirmText}>{t.mapConfirm}</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
             </Modal>
-            {/* Mod Seçimi */}
+
             <Text style={s.sectionLabel}>{t.modeSelect}</Text>
             <View style={s.card}>
                 <View style={s.modRow}>
@@ -279,11 +273,19 @@ export default function SettingsScreen() {
                 <Text style={s.modDesc}>{mod === 'sensorsuz' ? t.sensorlessDesc : t.sensorDesc}</Text>
             </View>
 
-            {/* Sensörlü Mod */}
             {mod === 'sensorlu' && (
                 <>
                     <Text style={s.sectionLabel}>{t.sensorData}</Text>
                     <View style={s.card}>
+                        <TouchableOpacity style={s.sensorFetchBtn} onPress={fetchFromSensor} disabled={sensorFetching}>
+                            {sensorFetching
+                                ? <ActivityIndicator size="small" color="#fff" />
+                                : <Text style={s.sensorFetchText}>
+                                    {lang === 'tr' ? '📡 ESP32\'den Güncel Veriyi Çek' : '📡 Fetch Latest from ESP32'}
+                                </Text>
+                            }
+                        </TouchableOpacity>
+                        <View style={s.divider} />
                         <Text style={s.inputLabel}>{t.wrInput}</Text>
                         <TextInput
                             style={s.input}
@@ -293,21 +295,10 @@ export default function SettingsScreen() {
                             placeholder={t.wrPlaceholder}
                             placeholderTextColor={theme.textLight}
                         />
-                        <View style={s.divider} />
-                        <Text style={s.inputLabel}>{t.rainInput}</Text>
-                        <TextInput
-                            style={s.input}
-                            value={rain}
-                            onChangeText={setRain}
-                            keyboardType="numeric"
-                            placeholder={t.rainPlaceholder}
-                            placeholderTextColor={theme.textLight}
-                        />
                     </View>
                 </>
             )}
 
-            {/* Kaydet */}
             <TouchableOpacity style={s.btn} onPress={kaydet}>
                 <Text style={s.btnText}>{saved ? t.saved : t.save}</Text>
             </TouchableOpacity>
@@ -346,13 +337,13 @@ function makeStyles(theme) {
         btnText: { color: '#fff', fontWeight: '500', fontSize: 16 },
         infoBox: { backgroundColor: theme.greenLight, borderRadius: 12, padding: 14 },
         infoText: { fontSize: 12, color: theme.greenText, lineHeight: 18 },
+        sensorFetchBtn: { backgroundColor: '#2196F3', borderRadius: 10, padding: 12, alignItems: 'center', marginBottom: 4 },
+        sensorFetchText: { color: '#fff', fontWeight: '500', fontSize: 13 },
         mapBtn: { backgroundColor: theme.card, borderRadius: 14, padding: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 12, borderWidth: 1.5, borderColor: '#4caf50' },
         mapBtnText: { fontSize: 14, fontWeight: '500', color: '#4caf50' },
         modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, backgroundColor: '#1a5c35' },
         modalTitle: { fontSize: 14, fontWeight: '500', color: '#fff', flex: 1 },
         modalClose: { fontSize: 22, color: '#fff', paddingHorizontal: 8 },
-        tempCoordsBar: { backgroundColor: '#e8f5e9', padding: 10, alignItems: 'center' },
-        tempCoordsText: { fontSize: 13, fontWeight: '500', color: '#1a5c35' },
         modalButtons: { flexDirection: 'row', gap: 12, padding: 16, borderTopWidth: 0.5, borderColor: '#ddd', backgroundColor: '#fff' },
         modalCancelBtn: { flex: 1, borderRadius: 12, padding: 14, alignItems: 'center', borderWidth: 1, borderColor: '#ddd' },
         modalCancelText: { fontSize: 14, color: '#666' },

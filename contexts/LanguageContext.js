@@ -99,6 +99,21 @@ export const translations = {
         navigation: 'Navigasyon',
         localStorage: 'Yerel Depolama',
         globalState: 'Global Durum',
+        // Yeni eklenenler:
+        irrigationThreshold: 'Sulama Eşiği',
+        viewDays: '1, 3 ve 7 günlük görünüm',
+        threshold: 'Eşik',
+        critical: 'Kritik',
+        heavyStress: 'Ağır Stres',
+        sensorError: 'Sensör Hatası',
+        sensorErrorDesc: 'Sensörden veri alınamadı. ESP32 bağlı ve çalışıyor mu?',
+        // tr:
+        manualIrrigation: 'Manuel Sulama',
+        irrigationOn: 'Sulama şu an açık',
+        irrigationOff: 'Sulama şu an kapalı',
+        offlineMode: '📵 Çevrimdışı Mod — Yerel kurallar aktif',
+
+
     },
     en: {
         appName: 'Smart Irrigation',
@@ -196,6 +211,20 @@ export const translations = {
         navigation: 'Navigation',
         localStorage: 'Local Storage',
         globalState: 'Global State',
+        // Yeni eklenenler:
+        irrigationThreshold: 'Irrigation Threshold',
+        viewDays: '1, 3 and 7 day view',
+        threshold: 'Threshold',
+        critical: 'Critical',
+        heavyStress: 'Heavy Stress',
+        sensorError: 'Sensor Error',
+        sensorErrorDesc: 'Could not fetch data from sensor. Is ESP32 connected and running?',
+
+        // en:
+        manualIrrigation: 'Manual Irrigation',
+        irrigationOn: 'Irrigation is currently ON',
+        irrigationOff: 'Irrigation is currently OFF',
+        offlineMode: '📵 Offline Mode — Local rules active',
     }
 };
 
@@ -205,8 +234,12 @@ export function LanguageProvider({ children }) {
         setLang(prev => prev === 'tr' ? 'en' : 'tr');
     }
     const t = translations[lang];
+
+    // t objesinin içine mevcut dili de ekliyoruz ki ekranlarda kontrol gerekirse kolay olsun
+    const value = { lang, toggleLang, t: { ...t, lang } };
+
     return (
-        <LanguageContext.Provider value={{ lang, toggleLang, t }}>
+        <LanguageContext.Provider value={value}>
             {children}
         </LanguageContext.Provider>
     );

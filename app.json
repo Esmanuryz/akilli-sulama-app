@@ -20,10 +20,21 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.aridai.sulamaapp",
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyBbvNek_SP7O_tAqBWayVKmePmTQEcIPTI"
+        }
+      }
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "f1553c15-e537-47dd-9e13-e3839fd6af24"
+      }
     }
   }
 }

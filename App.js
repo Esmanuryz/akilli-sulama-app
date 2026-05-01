@@ -52,26 +52,27 @@ function TabIcon({ name }) {
 
 function AppNavigator() {
   const { theme } = useTheme();
-  const { t } = useLanguage();
+  const { t } = useLanguage(); // Dil çeviri objesini buradan alıyoruz
 
   return (
     <NavigationContainer>
       <Tab.Navigator
         screenOptions={({ route }) => ({
+          // İkonlar statik olduğu için burada kalabilir
           tabBarIcon: () => <TabIcon name={route.name} />,
           tabBarActiveTintColor: theme.green,
           tabBarInactiveTintColor: theme.textLight,
           tabBarStyle: {
             backgroundColor: theme.tabBar,
             borderTopColor: theme.tabBarBorder,
-            paddingBottom: 6,
             height: 100,
             paddingBottom: 20,
           },
-          tabBarLabelStyle: { fontSize: 11 },
+          tabBarLabelStyle: { fontSize: 11, fontWeight: '500' },
           headerStyle: { backgroundColor: theme.header, height: 90 },
           headerTintColor: '#fff',
           headerTitleStyle: { fontWeight: '500' },
+          // Header logosu her dilde aynı kalabilir
           headerTitle: () => (
             <Image
               source={require('./assets/logo_sulama-Photoroom.png')}
@@ -81,10 +82,35 @@ function AppNavigator() {
           headerRight: () => <HeaderButtons />,
         })}
       >
-        <Tab.Screen name="Home" component={HomeScreen} />
-        <Tab.Screen name="Forecast" component={ForecastScreen} />
-        <Tab.Screen name="Settings" component={SettingsScreen} />
-        <Tab.Screen name="About" component={AboutScreen} />
+        <Tab.Screen
+          name="Home"
+          component={HomeScreen}
+          options={{
+            tabBarLabel: t.homeTab, // LanguageContext'ten gelen 'Ana Ekran' veya 'Home'
+            headerShown: true
+          }}
+        />
+        <Tab.Screen
+          name="Forecast"
+          component={ForecastScreen}
+          options={{
+            tabBarLabel: t.forecastTab, // 'Tahmin' veya 'Forecast'
+          }}
+        />
+        <Tab.Screen
+          name="Settings"
+          component={SettingsScreen}
+          options={{
+            tabBarLabel: t.settingsTab, // 'Ayarlar' veya 'Settings'
+          }}
+        />
+        <Tab.Screen
+          name="About"
+          component={AboutScreen}
+          options={{
+            tabBarLabel: t.aboutTab, // 'Hakkında' veya 'About'
+          }}
+        />
       </Tab.Navigator>
     </NavigationContainer>
   );
